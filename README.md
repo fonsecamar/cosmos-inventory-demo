@@ -128,7 +128,7 @@ You can call Function APIs from Azure Portal or your favorite tool.
         "eventDetails": {
             "productId": "1000",
             "nodeId": "1",
-            "shippedQuantity": 10
+            "cancelledQuantity": 10
         }
     }'
     ```
