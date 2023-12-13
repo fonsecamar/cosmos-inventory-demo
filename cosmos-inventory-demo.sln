@@ -1,0 +1,48 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.8.34316.72
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Inventory.Infrastructure", "src\Inventory.Infrastructure\Inventory.Infrastructure.csproj", "{637D3028-5996-406D-9E33-B5BA68D46769}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "cosmos-inventory-worker", "src\cosmos-inventory-worker\cosmos-inventory-worker.csproj", "{04F7AAA3-9B88-43D2-A74B-3B097CEC388F}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "cosmos-inventory-api", "src\cosmos-inventory-api\cosmos-inventory-api.csproj", "{8DF31E83-C6C5-4F4C-94D9-C33241A52ED1}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{44D53043-C6C9-4D77-9886-8011A2E925FE}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "deploy", "deploy", "{2C5920A5-7E11-47FF-B2E4-443CD7AA7EB7}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "infrastructure", "infrastructure", "{8A172173-A7B4-4819-B23D-611D28A948A8}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{637D3028-5996-406D-9E33-B5BA68D46769}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{637D3028-5996-406D-9E33-B5BA68D46769}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{637D3028-5996-406D-9E33-B5BA68D46769}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{637D3028-5996-406D-9E33-B5BA68D46769}.Release|Any CPU.Build.0 = Release|Any CPU
+		{04F7AAA3-9B88-43D2-A74B-3B097CEC388F}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{04F7AAA3-9B88-43D2-A74B-3B097CEC388F}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{04F7AAA3-9B88-43D2-A74B-3B097CEC388F}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{04F7AAA3-9B88-43D2-A74B-3B097CEC388F}.Release|Any CPU.Build.0 = Release|Any CPU
+		{8DF31E83-C6C5-4F4C-94D9-C33241A52ED1}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{8DF31E83-C6C5-4F4C-94D9-C33241A52ED1}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{8DF31E83-C6C5-4F4C-94D9-C33241A52ED1}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{8DF31E83-C6C5-4F4C-94D9-C33241A52ED1}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{637D3028-5996-406D-9E33-B5BA68D46769} = {44D53043-C6C9-4D77-9886-8011A2E925FE}
+		{04F7AAA3-9B88-43D2-A74B-3B097CEC388F} = {44D53043-C6C9-4D77-9886-8011A2E925FE}
+		{8DF31E83-C6C5-4F4C-94D9-C33241A52ED1} = {44D53043-C6C9-4D77-9886-8011A2E925FE}
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {5A5632F0-9854-4F7B-9FED-94836D90A77C}
+	EndGlobalSection
+EndGlobal

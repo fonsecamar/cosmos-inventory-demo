@@ -1,0 +1,9 @@
+{
+  "profiles": {
+    "cosmos_inventory_api": {
+      "commandName": "Project",
+      "commandLineArgs": "--port 7210",
+      "launchBrowser": false
+    }
+  }
+}
