@@ -26,22 +26,22 @@ namespace Inventory.Infrastructure.Domain
 
     public class InventoryUpdatedEvent : EventDetails
     {
-        public long onHandQuantity { get; set; }
+        public required long onHandQuantity { get; set; }
     }
 
     public class ItemReservedEvent : EventDetails
     {
-        public long reservedQuantity { get; set; }
+        public required long reservedQuantity { get; set; }
     }
 
     public class OrderCancelledEvent : EventDetails
     {
-        public long cancelledQuantity { get; set; }
+        public required long cancelledQuantity { get; set; }
     }
 
     public class OrderShippedEvent : EventDetails
     {
-        public long shippedQuantity { get; set; }
+        public required long shippedQuantity { get; set; }
     }
 
     public class InventoryEventConverter : JsonConverter<InventoryEvent>
