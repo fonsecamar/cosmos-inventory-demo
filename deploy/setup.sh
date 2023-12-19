@@ -53,17 +53,26 @@ read -n 1
 cd ../src
 echo "Directory changed: '$(pwd)'"
 
-cd cosmos-inventory-api
-
 FUNCAPINAME=$(az functionapp list --resource-group $RESOURCE_GROUP --query "[?starts_with(name, 'api-')].name" -o tsv)
-func azure functionapp publish $FUNCAPINAME --dotnet-version '8.0'
-
-cd ../cosmos-inventory-worker
-
 FUNCWORKERNAME=$(az functionapp list --resource-group $RESOURCE_GROUP --query "[?starts_with(name, 'worker-')].name" -o tsv)
-func azure functionapp publish $FUNCWORKERNAME --dotnet-version '8.0'
 
-cd ../../deploy
+dotnet publish ./cosmos-inventory-api/ -c Release -r win-x64 -o ./Tmp/api
+dotnet publish ./cosmos-inventory-worker/ -c Release -r win-x64 -o ./Tmp/worker
+
+cd ./Tmp/api
+zip -r ../api.zip .
+
+cd ../worker
+zip -r ../worker.zip .
+
+cd ../..
+
+az functionapp deployment source config-zip -g $RESOURCE_GROUP -n $FUNCAPINAME --src ./Tmp/api.zip
+az functionapp deployment source config-zip -g $RESOURCE_GROUP -n $FUNCWORKERNAME --src ./Tmp/worker.zip
+
+rm -rf ./Tmp
+
+cd ../deploy
 
 echo ""
 echo "***************************************************"

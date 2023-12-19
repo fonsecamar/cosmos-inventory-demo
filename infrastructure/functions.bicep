@@ -79,6 +79,7 @@ resource functionAppApi 'Microsoft.Web/sites@2022-03-01' = {
     serverFarmId: plan.id
     siteConfig: {
       use32BitWorkerProcess: false
+      netFrameworkVersion: 'v8.0'
       
       appSettings: [
         {
@@ -104,6 +105,14 @@ resource functionAppApi 'Microsoft.Web/sites@2022-03-01' = {
         {
           name: 'FUNCTIONS_EXTENSION_VERSION'
           value: '~4'
+        }
+        {
+          name: 'WEBSITE_RUN_FROM_PACKAGE'
+          value: '1'
+        }
+        {
+          name: 'WEBSITE_USE_PLACEHOLDER_DOTNETISOLATED'
+          value: '1'
         }
         {
           name: 'CosmosInventoryConnection__accountEndpoint'
@@ -146,7 +155,7 @@ resource functionAppWorker 'Microsoft.Web/sites@2022-03-01' = {
     serverFarmId: plan.id
     siteConfig: {
       use32BitWorkerProcess: false
-      netFrameworkVersion: '8.0'
+      netFrameworkVersion: 'v8.0'
       
       appSettings: [
         {
@@ -172,6 +181,14 @@ resource functionAppWorker 'Microsoft.Web/sites@2022-03-01' = {
         {
           name: 'FUNCTIONS_EXTENSION_VERSION'
           value: '~4'
+        }
+        {
+          name: 'WEBSITE_RUN_FROM_PACKAGE'
+          value: '1'
+        }
+        {
+          name: 'WEBSITE_USE_PLACEHOLDER_DOTNETISOLATED'
+          value: '1'
         }
         {
           name: 'CosmosInventoryConnection__accountEndpoint'

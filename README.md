@@ -28,6 +28,8 @@ This demo contains 2 alternative ways to implement inventory management.
 
 * <a href="https://git-scm.com/download/linux" target="_blank">Install Git</a>
 
+* Install Zip: sudo apt install zip
+
 ## Setup environment
 
 > The setup will provision and configure all the resources required.
