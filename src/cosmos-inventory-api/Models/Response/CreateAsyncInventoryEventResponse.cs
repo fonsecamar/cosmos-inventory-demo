@@ -4,7 +4,7 @@ using Microsoft.Azure.Functions.Worker.Http;
 
 namespace cosmos_inventory_api.Models.Response
 {
-    public class AsyncInventoryResponse
+    public class CreateAsyncInventoryEventResponse
     {
         [CosmosDBOutput(databaseName: "%inventoryDatabase%", containerName: "%ledgerContainer%", Connection = "CosmosInventoryConnection", PartitionKey = "pk")]
         public InventoryEvent? InventoryEvent { get; set; }

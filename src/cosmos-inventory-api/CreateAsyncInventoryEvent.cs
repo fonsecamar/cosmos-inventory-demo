@@ -8,20 +8,21 @@ using System.Text.Json;
 
 namespace cosmos_inventory_api
 {
-    public class AsyncInventory
+    public class CreateAsyncInventoryEvent
     {
         private readonly ILogger _logger;
 
-        public AsyncInventory(ILoggerFactory loggerFactory)
+        public CreateAsyncInventoryEvent(ILoggerFactory loggerFactory)
         {
-            _logger = loggerFactory.CreateLogger<AsyncInventory>();
+            _logger = loggerFactory.CreateLogger<CreateAsyncInventoryEvent>();
         }
 
         private long _lowAvailabilityThreshold = 0;
 
-        [Function("AsyncInventory")]
-        public async Task<AsyncInventoryResponse> RunAsync(
-            [HttpTrigger(AuthorizationLevel.Anonymous, "post", Route = "asyncInventory")] HttpRequestData req,
+        [Function("CreateAsyncInventoryEvent")]
+        public async Task<CreateAsyncInventoryEventResponse> RunAsync(
+            [HttpTrigger(AuthorizationLevel.Anonymous, "post", Route = "CreateAsyncInventoryEvent")] HttpRequestData req,
+            [FromBody] InventoryEvent ev,
             [CosmosDBInput(
                 databaseName: "%inventoryDatabase%",
                 containerName: "%ledgerContainer%",
@@ -32,22 +33,17 @@ namespace cosmos_inventory_api
                 Connection = "CosmosInventoryConnection")] Container snapshotContainer,
             FunctionContext executionContext)
         {
-            var log = executionContext.GetLogger("AsyncInventory");
-
             _lowAvailabilityThreshold = Convert.ToInt64(Environment.GetEnvironmentVariable("lowAvailabilityThreshold"));
             var response = req.CreateResponse();
             response.Headers.Add("Content-Type", "application/json; charset=utf-8");
 
             try
             {
-                string requestBody = await new StreamReader(req.Body).ReadToEndAsync();
-                var ev = JsonSerializer.Deserialize<InventoryEvent>(requestBody);
-
                 if (ev == null) 
                 {
                     response.StatusCode = System.Net.HttpStatusCode.BadRequest;
                     response.WriteString("Invalid request body");
-                    return new AsyncInventoryResponse()
+                    return new CreateAsyncInventoryEventResponse()
                     {
                         HttpResponse = response
                     };
@@ -66,7 +62,7 @@ namespace cosmos_inventory_api
                     {
                         response.StatusCode = System.Net.HttpStatusCode.BadRequest;
                         response.WriteString("Not enough inventory to reserve");
-                        return new AsyncInventoryResponse()
+                        return new CreateAsyncInventoryEventResponse()
                         {
                             HttpResponse = response
                         };
@@ -86,7 +82,7 @@ namespace cosmos_inventory_api
                         {
                             response.StatusCode = System.Net.HttpStatusCode.BadRequest;
                             response.WriteString("Not enough inventory to reserve");
-                            return new AsyncInventoryResponse()
+                            return new CreateAsyncInventoryEventResponse()
                             {
                                 HttpResponse = response
                             };
@@ -94,7 +90,7 @@ namespace cosmos_inventory_api
                     }
                 }
 
-                return new AsyncInventoryResponse()
+                return new CreateAsyncInventoryEventResponse()
                 {
                     InventoryEvent = ev,
                     HttpResponse = req.CreateResponse(System.Net.HttpStatusCode.OK)
@@ -102,11 +98,11 @@ namespace cosmos_inventory_api
             }
             catch (Exception ex)
             {
-                log.LogError(ex, "Error processing command");
+                _logger.LogError(ex, "Error processing command");
                 {
                     response.StatusCode = System.Net.HttpStatusCode.InternalServerError;
                     response.WriteString(ex.Message);
-                    return new AsyncInventoryResponse()
+                    return new CreateAsyncInventoryEventResponse()
                     {
                         HttpResponse = response
                     };

@@ -8,34 +8,30 @@ using System.Text.Json;
 
 namespace cosmos_inventory_api
 {
-    public class SyncInventory
+    public class CreateSyncInventoryEvent
     {
         private readonly ILogger _logger;
 
-        public SyncInventory(ILoggerFactory loggerFactory)
+        public CreateSyncInventoryEvent(ILoggerFactory loggerFactory)
         {
-            _logger = loggerFactory.CreateLogger<SyncInventory>();
+            _logger = loggerFactory.CreateLogger<CreateSyncInventoryEvent>();
         }
 
-        [Function("SyncInventory")]
+        [Function("CreateSyncInventoryEvent")]
         public async Task<HttpResponseData> RunAsync(
-            [HttpTrigger(AuthorizationLevel.Anonymous, "post", Route = "syncInventory")] HttpRequestData req,
+            [HttpTrigger(AuthorizationLevel.Anonymous, "post", Route = "CreateSyncInventoryEvent")] HttpRequestData req,
+            [FromBody] InventoryEvent ev,
             [CosmosDBInput(
                 databaseName: "%inventoryDatabase%",
                 containerName: "%syncInventoryContainer%",
                 Connection = "CosmosInventoryConnection")] Container unifiedContainer,
             FunctionContext executionContext)
         {
-            var log = executionContext.GetLogger("SyncInventory");
-
             var response = req.CreateResponse();
-            response.Headers.Add("Content-Type", "text/plain; charset=utf-8");
+            response.Headers.Add("Content-Type", "application/json; charset=utf-8");
 
             try
             {
-                string requestBody = await new StreamReader(req.Body).ReadToEndAsync();
-                var ev = JsonSerializer.Deserialize<InventoryEvent>(requestBody);
-
                 if (ev == null)
                 {
                     response.StatusCode = System.Net.HttpStatusCode.BadRequest;
@@ -51,20 +47,24 @@ namespace cosmos_inventory_api
                 switch (ev.eventType.ToLowerInvariant())
                 {
                     case "inventoryupdated":
-                        log.LogInformation($"Inventory item updated: {ev.eventDetails}");
-                        result = await ProcessInventoryUpdatedEventAsync(ev, unifiedContainer, log);
+                        _logger.LogInformation($"Inventory item updated: {ev.eventDetails}");
+                        result = await ProcessInventoryUpdatedEventAsync(ev, unifiedContainer);
                         break;
                     case "itemreserved":
-                        log.LogInformation($"Inventory item reserved: {ev.eventDetails}");
-                        result = await ProcessItemReservedEventAsync(ev, unifiedContainer, log);
+                        _logger.LogInformation($"Inventory item reserved: {ev.eventDetails}");
+                        result = await ProcessItemReservedEventAsync(ev, unifiedContainer);
                         break;
                     case "ordershipped":
-                        log.LogInformation($"Inventory item shipped: {ev.eventDetails}");
-                        result = await ProcessOrderShippedEventAsync(ev, unifiedContainer, log);
+                        _logger.LogInformation($"Inventory item shipped: {ev.eventDetails}");
+                        result = await ProcessOrderShippedEventAsync(ev, unifiedContainer);
                         break;
                     case "ordercancelled":
-                        log.LogInformation($"Inventory item cancelled: {ev.eventDetails}");
-                        result = await ProcessOrderCancelledEventAsync(ev, unifiedContainer, log);
+                        _logger.LogInformation($"Inventory item cancelled: {ev.eventDetails}");
+                        result = await ProcessOrderCancelledEventAsync(ev, unifiedContainer);
+                        break;
+                    case "orderreturned":
+                        _logger.LogInformation($"Inventory item returned: {ev.eventDetails}");
+                        result = await ProcessOrderReturnedEventAsync(ev, unifiedContainer);
                         break;
                 }
 
@@ -74,7 +74,7 @@ namespace cosmos_inventory_api
             }
             catch (Exception ex)
             {
-                log.LogError(ex, "Error processing command");
+                _logger.LogError(ex, "Error processing command");
                 response.StatusCode = HttpStatusCode.InternalServerError;
                 response.WriteString(ex.Message);
             }
@@ -82,7 +82,7 @@ namespace cosmos_inventory_api
             return response;
         }
 
-        public static async Task<(HttpStatusCode, string)> ProcessInventoryUpdatedEventAsync(InventoryEvent inventoryEvent, Container unifiedContainer, ILogger log)
+        public async Task<(HttpStatusCode, string)> ProcessInventoryUpdatedEventAsync(InventoryEvent inventoryEvent, Container unifiedContainer)
         {
             long onHandQuantity = ((InventoryUpdatedEvent)inventoryEvent.eventDetails).onHandQuantity;
 
@@ -106,7 +106,7 @@ namespace cosmos_inventory_api
                     return new(HttpStatusCode.OK, string.Empty);
                 else if (response.StatusCode == System.Net.HttpStatusCode.NotFound)
                 {
-                    log.LogInformation($"Inventory snapshot not found for item {inventoryEvent.pk}. Creating new snapshot.");
+                    _logger.LogInformation($"Inventory snapshot not found for item {inventoryEvent.pk}. Creating new snapshot.");
 
                     var snapshot = new InventoryShapshot()
                     {
@@ -134,12 +134,12 @@ namespace cosmos_inventory_api
             }
             catch (CosmosException ex)
             {
-                log.LogError($"Error updating inventory snapshot: {ex.Message}");
+                _logger.LogError($"Error updating inventory snapshot: {ex.Message}");
                 throw;
             }
         }
 
-        private static async Task<(HttpStatusCode, string)> ProcessOrderCancelledEventAsync(InventoryEvent inventoryEvent, Container unifiedContainer, ILogger log)
+        private async Task<(HttpStatusCode, string)> ProcessOrderCancelledEventAsync(InventoryEvent inventoryEvent, Container unifiedContainer)
         {
             long cancelledQuantity = ((OrderCancelledEvent)inventoryEvent.eventDetails).cancelledQuantity;
 
@@ -173,12 +173,44 @@ namespace cosmos_inventory_api
             }
             catch (Exception ex)
             {
-                log.LogError($"Error updating inventory snapshot: {ex.Message}");
+                _logger.LogError($"Error updating inventory snapshot: {ex.Message}");
                 throw;
             }
         }
 
-        private static async Task<(HttpStatusCode, string)> ProcessOrderShippedEventAsync(InventoryEvent inventoryEvent, Container unifiedContainer, ILogger log)
+        private async Task<(HttpStatusCode, string)> ProcessOrderReturnedEventAsync(InventoryEvent inventoryEvent, Container unifiedContainer)
+        {
+            long returnedQuantity = ((OrderReturnedEvent)inventoryEvent.eventDetails).returnedQuantity;
+
+            List<PatchOperation> patchOperations = new List<PatchOperation>();
+            patchOperations.Add(PatchOperation.Increment("/returned", returnedQuantity));
+            patchOperations.Add(PatchOperation.Increment("/onHand", returnedQuantity));
+            patchOperations.Add(PatchOperation.Set("/lastUpdated", DateTime.UtcNow));
+
+            try
+            {
+                var pk = new PartitionKey(inventoryEvent.pk);
+
+                var batch = unifiedContainer.CreateTransactionalBatch(pk);
+
+                batch.PatchItem(inventoryEvent.pk, patchOperations);
+                batch.CreateItem(inventoryEvent);
+
+                var response = await batch.ExecuteAsync();
+
+                if (response.IsSuccessStatusCode)
+                    return new(HttpStatusCode.OK, string.Empty);
+                else
+                    return new(response.StatusCode, response.ErrorMessage);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError($"Error updating inventory snapshot: {ex.Message}");
+                throw;
+            }
+        }
+
+        private async Task<(HttpStatusCode, string)> ProcessOrderShippedEventAsync(InventoryEvent inventoryEvent, Container unifiedContainer)
         {
             long shippedQuantity = ((OrderShippedEvent)inventoryEvent.eventDetails).shippedQuantity;
 
@@ -212,12 +244,12 @@ namespace cosmos_inventory_api
             }
             catch (Exception ex)
             {
-                log.LogError($"Error updating inventory snapshot: {ex.Message}");
+                _logger.LogError($"Error updating inventory snapshot: {ex.Message}");
                 throw;
             }
         }
 
-        private static async Task<(HttpStatusCode, string)> ProcessItemReservedEventAsync(InventoryEvent inventoryEvent, Container unifiedContainer, ILogger log)
+        private async Task<(HttpStatusCode, string)> ProcessItemReservedEventAsync(InventoryEvent inventoryEvent, Container unifiedContainer)
         {
             long reservedQuantity = ((ItemReservedEvent)inventoryEvent.eventDetails).reservedQuantity;
 
@@ -251,7 +283,7 @@ namespace cosmos_inventory_api
             }
             catch (Exception ex)
             {
-                log.LogError($"Error updating inventory snapshot: {ex.Message}");
+                _logger.LogError($"Error updating inventory snapshot: {ex.Message}");
                 throw;
             }
         }

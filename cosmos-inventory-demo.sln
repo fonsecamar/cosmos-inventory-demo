@@ -12,8 +12,26 @@ EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{44D53043-C6C9-4D77-9886-8011A2E925FE}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "deploy", "deploy", "{2C5920A5-7E11-47FF-B2E4-443CD7AA7EB7}"
+	ProjectSection(SolutionItems) = preProject
+		deploy\setup.sh = deploy\setup.sh
+	EndProjectSection
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "infrastructure", "infrastructure", "{8A172173-A7B4-4819-B23D-611D28A948A8}"
+	ProjectSection(SolutionItems) = preProject
+		infrastructure\blob.bicep = infrastructure\blob.bicep
+		infrastructure\cosmos.bicep = infrastructure\cosmos.bicep
+		infrastructure\functions.bicep = infrastructure\functions.bicep
+		infrastructure\main.bicep = infrastructure\main.bicep
+	EndProjectSection
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "cosmos-order-api", "src\cosmos-order-api\cosmos-order-api.csproj", "{E156F4BA-E844-4817-80AE-3194A437DAD2}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "cosmos-order-worker", "src\cosmos-order-worker\cosmos-order-worker.csproj", "{1B0B96E2-B412-41DF-99B7-98DFC135B513}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{470A1A84-2857-4F10-BE56-1DC51D3707EE}"
+	ProjectSection(SolutionItems) = preProject
+		README.md = README.md
+	EndProjectSection
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -33,6 +51,14 @@ Global
 		{8DF31E83-C6C5-4F4C-94D9-C33241A52ED1}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{8DF31E83-C6C5-4F4C-94D9-C33241A52ED1}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{8DF31E83-C6C5-4F4C-94D9-C33241A52ED1}.Release|Any CPU.Build.0 = Release|Any CPU
+		{E156F4BA-E844-4817-80AE-3194A437DAD2}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{E156F4BA-E844-4817-80AE-3194A437DAD2}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{E156F4BA-E844-4817-80AE-3194A437DAD2}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{E156F4BA-E844-4817-80AE-3194A437DAD2}.Release|Any CPU.Build.0 = Release|Any CPU
+		{1B0B96E2-B412-41DF-99B7-98DFC135B513}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{1B0B96E2-B412-41DF-99B7-98DFC135B513}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{1B0B96E2-B412-41DF-99B7-98DFC135B513}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{1B0B96E2-B412-41DF-99B7-98DFC135B513}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -41,6 +67,8 @@ Global
 		{637D3028-5996-406D-9E33-B5BA68D46769} = {44D53043-C6C9-4D77-9886-8011A2E925FE}
 		{04F7AAA3-9B88-43D2-A74B-3B097CEC388F} = {44D53043-C6C9-4D77-9886-8011A2E925FE}
 		{8DF31E83-C6C5-4F4C-94D9-C33241A52ED1} = {44D53043-C6C9-4D77-9886-8011A2E925FE}
+		{E156F4BA-E844-4817-80AE-3194A437DAD2} = {44D53043-C6C9-4D77-9886-8011A2E925FE}
+		{1B0B96E2-B412-41DF-99B7-98DFC135B513} = {44D53043-C6C9-4D77-9886-8011A2E925FE}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {5A5632F0-9854-4F7B-9FED-94836D90A77C}

@@ -1,0 +1,9 @@
+{
+  "profiles": {
+    "cosmos_order_api": {
+      "commandName": "Project",
+      "commandLineArgs": "--port 7106",
+      "launchBrowser": false
+    }
+  }
+}

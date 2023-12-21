@@ -22,6 +22,7 @@ namespace cosmos_inventory_worker
                 Connection = "CosmosInventoryConnection",
                 LeaseContainerName = "leases",
                 MaxItemsPerInvocation = 20,
+                FeedPollDelay = 1000,
                 StartFromBeginning = false,
                 CreateLeaseContainerIfNotExists = true)]IReadOnlyList<InventoryEvent> input,
             [CosmosDBInput(
@@ -30,27 +31,29 @@ namespace cosmos_inventory_worker
                 Connection = "CosmosInventoryConnection")] Container snapshotContainer,
              FunctionContext executionContext)
         {
-            var log = executionContext.GetLogger("InventoryProcessor");
-
             foreach (var ev in input)
             {
                 switch (ev.eventType.ToLowerInvariant())
                 {
                     case "inventoryupdated":
-                        log.LogInformation($"Inventory item updated: {ev.eventDetails}");
-                        await ProcessInventoryUpdatedEventAsync(ev, snapshotContainer, log);
+                        _logger.LogInformation($"Inventory item updated: {ev.eventDetails}");
+                        await ProcessInventoryUpdatedEventAsync(ev, snapshotContainer);
                         break;
                     case "itemreserved":
-                        log.LogInformation($"Inventory item reserved: {ev.eventDetails}");
-                        await ProcessItemReservedEventAsync(ev, snapshotContainer, log);
+                        _logger.LogInformation($"Inventory item reserved: {ev.eventDetails}");
+                        await ProcessItemReservedEventAsync(ev, snapshotContainer);
                         break;
                     case "ordershipped":
-                        log.LogInformation($"Inventory item shipped: {ev.eventDetails}");
-                        await ProcessOrderShippedEventAsync(ev, snapshotContainer, log);
+                        _logger.LogInformation($"Inventory item shipped: {ev.eventDetails}");
+                        await ProcessOrderShippedEventAsync(ev, snapshotContainer);
                         break;
                     case "ordercancelled":
-                        log.LogInformation($"Inventory item cancelled: {ev.eventDetails}");
-                        await ProcessOrderCancelledEventAsync(ev, snapshotContainer, log);
+                        _logger.LogInformation($"Inventory item cancelled: {ev.eventDetails}");
+                        await ProcessOrderCancelledEventAsync(ev, snapshotContainer);
+                        break;
+                    case "orderreturned":
+                        _logger.LogInformation($"Inventory item returned: {ev.eventDetails}");
+                        await ProcessOrderReturnedEventAsync(ev, snapshotContainer);
                         break;
                     default:
                         break;
@@ -58,7 +61,7 @@ namespace cosmos_inventory_worker
             }            
         }
 
-        public static async Task ProcessInventoryUpdatedEventAsync(InventoryEvent inventoryEvent, Container snapshotContainer, ILogger log)
+        public async Task ProcessInventoryUpdatedEventAsync(InventoryEvent inventoryEvent, Container snapshotContainer)
         {
             long onHandQuantity = ((InventoryUpdatedEvent)inventoryEvent.eventDetails).onHandQuantity;
 
@@ -79,7 +82,7 @@ namespace cosmos_inventory_worker
 
                 if (response.StatusCode == System.Net.HttpStatusCode.NotFound)
                 {
-                    log.LogInformation($"Inventory snapshot not found for item {inventoryEvent.pk}. Creating new snapshot.");
+                    _logger.LogInformation($"Inventory snapshot not found for item {inventoryEvent.pk}. Creating new snapshot.");
 
                     var snapshot = new InventoryShapshot()
                     {
@@ -96,18 +99,18 @@ namespace cosmos_inventory_worker
                 else if (response.StatusCode == System.Net.HttpStatusCode.PreconditionFailed)
                 {
                     //Enqueue event to analyze. Ignore due to same event being processed twice.
-                    log.LogError($"Inventory snapshot not updated for item {inventoryEvent.pk} because duplicated processing. Event: {inventoryEvent}");
+                    _logger.LogError($"Inventory snapshot not updated for item {inventoryEvent.pk} because duplicated processing. Event: {inventoryEvent}");
                 }
 
             }
             catch (CosmosException ex)
             {
-                log.LogError($"Error updating inventory snapshot: {ex.Message}");
+                _logger.LogError($"Error updating inventory snapshot: {ex.Message}");
                 throw;
             }
         }
 
-        private static async Task ProcessOrderCancelledEventAsync(InventoryEvent inventoryEvent, Container snapshotContainer, ILogger log)
+        private async Task ProcessOrderCancelledEventAsync(InventoryEvent inventoryEvent, Container snapshotContainer)
         {
             long cancelledQuantity = ((OrderCancelledEvent)inventoryEvent.eventDetails).cancelledQuantity;
 
@@ -129,18 +132,51 @@ namespace cosmos_inventory_worker
                 if (response.StatusCode == System.Net.HttpStatusCode.PreconditionFailed)
                 {
                     //Enqueue event to analyze. Handle not enough reservations or ignore due to same event being processed twice.
-                    log.LogError($"Inventory snapshot not updated for item {inventoryEvent.pk} because of not enough reservations or duplicated processing. Event: {inventoryEvent}");
+                    _logger.LogError($"Inventory snapshot not updated for item {inventoryEvent.pk} because of not enough reservations or duplicated processing. Event: {inventoryEvent}");
                 }
             }
             catch (Exception ex)
             {
 
-                log.LogError($"Error updating inventory snapshot: {ex.Message}");
+                _logger.LogError($"Error updating inventory snapshot: {ex.Message}");
                 throw;
             }
         }
 
-        private static async Task ProcessOrderShippedEventAsync(InventoryEvent inventoryEvent, Container snapshotContainer, ILogger log)
+        private async Task ProcessOrderReturnedEventAsync(InventoryEvent inventoryEvent, Container snapshotContainer)
+        {
+            long returnedQuantity = ((OrderReturnedEvent)inventoryEvent.eventDetails).returnedQuantity;
+
+            List<PatchOperation> patchOperations = new List<PatchOperation>();
+            patchOperations.Add(PatchOperation.Increment("/returned", returnedQuantity));
+            patchOperations.Add(PatchOperation.Increment("/onHand", returnedQuantity));
+            patchOperations.Add(PatchOperation.Set("/lastEventTs", inventoryEvent._ts));
+            patchOperations.Add(PatchOperation.Set("/lastUpdated", DateTime.UtcNow));
+
+            var patchOptions = new PatchItemRequestOptions()
+            {
+                FilterPredicate = $"FROM c WHERE c.lastEventTs < {inventoryEvent._ts}"
+            };
+
+            try
+            {
+                var response = await snapshotContainer.PatchItemStreamAsync(inventoryEvent.pk, new PartitionKey(inventoryEvent.pk), patchOperations, patchOptions);
+
+                if (response.StatusCode == System.Net.HttpStatusCode.PreconditionFailed)
+                {
+                    //Enqueue event to analyze. Ignore due to same event being processed twice.
+                    _logger.LogError($"Inventory snapshot not updated for item {inventoryEvent.pk} because duplicated processing. Event: {inventoryEvent}");
+                }
+            }
+            catch (Exception ex)
+            {
+
+                _logger.LogError($"Error updating inventory snapshot: {ex.Message}");
+                throw;
+            }
+        }
+
+        private async Task ProcessOrderShippedEventAsync(InventoryEvent inventoryEvent, Container snapshotContainer)
         {
             long shippedQuantity = ((OrderShippedEvent)inventoryEvent.eventDetails).shippedQuantity;
 
@@ -162,18 +198,18 @@ namespace cosmos_inventory_worker
                 if (response.StatusCode == System.Net.HttpStatusCode.PreconditionFailed)
                 {
                     //Enqueue event to analyze. Handle not enough reservations or ignore due to same event being processed twice.
-                    log.LogError($"Inventory snapshot not updated for item {inventoryEvent.pk} because of not enough reservations or duplicated processing. Event: {inventoryEvent}");
+                    _logger.LogError($"Inventory snapshot not updated for item {inventoryEvent.pk} because of not enough reservations or duplicated processing. Event: {inventoryEvent}");
                 }
             }
             catch (Exception ex)
             {
 
-                log.LogError($"Error updating inventory snapshot: {ex.Message}");
+                _logger.LogError($"Error updating inventory snapshot: {ex.Message}");
                 throw;
             }
         }
 
-        private static async Task ProcessItemReservedEventAsync(InventoryEvent inventoryEvent, Container snapshotContainer, ILogger log)
+        private async Task ProcessItemReservedEventAsync(InventoryEvent inventoryEvent, Container snapshotContainer)
         {
             long reservedQuantity = ((ItemReservedEvent)inventoryEvent.eventDetails).reservedQuantity;
 
@@ -195,12 +231,12 @@ namespace cosmos_inventory_worker
                 if (response.StatusCode == System.Net.HttpStatusCode.PreconditionFailed)
                 {
                     //Enqueue event to analyze. Handle overselling or ignore due to same event being processed twice.
-                    log.LogError($"Inventory snapshot not updated for item {inventoryEvent.pk} because of overselling or duplicated processing. Event: {inventoryEvent}");
+                    _logger.LogError($"Inventory snapshot not updated for item {inventoryEvent.pk} because of overselling or duplicated processing. Event: {inventoryEvent}");
                 }
             }
             catch (Exception ex)
             {
-                log.LogError($"Error updating inventory snapshot: {ex.Message}");
+                _logger.LogError($"Error updating inventory snapshot: {ex.Message}");
                 throw;
             }
         }

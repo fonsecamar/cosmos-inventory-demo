@@ -70,12 +70,14 @@ This demo contains 2 alternative ways to implement inventory management.
 ## Running the sample
 
 You can call Function APIs from Azure Portal or your favorite tool.
-> Async and Sync calls are similar. Just change the api path: /asyncInventory or /syncInventory
+> Async and Sync calls are similar. Just change the api path: /CreateAsyncInventoryEvent or /CreateSyncInventoryEvent, /GetAsyncSnapshot or /GetSyncSnapshot.
 
 1. Creates initial inventory of a product
+</br>
+InventoryUpdated event will create or patch InventorySnapshot increasing onHand and availbleToSell quantities.
 
     ```bash
-    curl --request POST "https://api-funcinv<suffix>.azurewebsites.net/api/asyncinventory" \
+    curl --request POST "https://api-funcinv<suffix>.azurewebsites.net/api/CreateAsyncInventoryEvent" \
     --header 'Content-Type: application/json' \
     --data-raw '{
         "pk": "1-1000",
@@ -89,9 +91,11 @@ You can call Function APIs from Azure Portal or your favorite tool.
     ```
 
 1. Notifies items reserved
+</br>
+ItemReserved event will patch InventorySnapshot increasing activeCustomerReservations and decreasing availbleToSell quantities. Reservations can only occur if reservedQuantity < availableToSell.
 
     ```bash
-    curl --request POST "https://api-funcinv<suffix>.azurewebsites.net/api/asyncinventory" \
+    curl --request POST "https://api-funcinv<suffix>.azurewebsites.net/api/CreateAsyncInventoryEvent" \
     --header 'Content-Type: application/json' \
     --data-raw '{
         "pk": "1-1000",
@@ -105,9 +109,11 @@ You can call Function APIs from Azure Portal or your favorite tool.
     ```
 
 1. Notifies order shipped
+</br>
+OrderShipped event will patch InventorySnapshot decreasing activeCustomerReservations and onHand quantities. Shippments can only occur if shippedQuantity <= activeCustomerReservations.
 
     ```bash
-    curl --request POST "https://api-funcinv<suffix>.azurewebsites.net/api/asyncinventory" \
+    curl --request POST "https://api-funcinv<suffix>.azurewebsites.net/api/CreateAsyncInventoryEvent" \
     --header 'Content-Type: application/json' \
     --data-raw '{
         "pk": "1-1000",
@@ -120,9 +126,11 @@ You can call Function APIs from Azure Portal or your favorite tool.
     }'
     ```
 1. Notifies order cancelled
+</br>
+OrderCancelled event will patch InventorySnapshot decreasing activeCustomerReservations and increasing availableToSell quantities. Cancellations can only occur if cancelledQuantity <= activeCustomerReservations.
 
     ```bash
-    curl --request POST "https://api-funcinv<suffix>.azurewebsites.net/api/asyncinventory" \
+    curl --request POST "https://api-funcinv<suffix>.azurewebsites.net/api/CreateAsyncInventoryEvent" \
     --header 'Content-Type: application/json' \
     --data-raw '{
         "pk": "1-1000",
@@ -133,6 +141,30 @@ You can call Function APIs from Azure Portal or your favorite tool.
             "cancelledQuantity": 10
         }
     }'
+    ```
+
+1. Notifies order returned
+</br>
+OrderReturned event will patch InventorySnapshot increasing returned and onHand quantities.
+
+    ```bash
+    curl --request POST "https://api-funcinv<suffix>.azurewebsites.net/api/CreateAsyncInventoryEvent" \
+    --header 'Content-Type: application/json' \
+    --data-raw '{
+        "pk": "1-1000",
+        "eventType": "OrderReturned",
+        "eventDetails": {
+            "productId": "1000",
+            "nodeId": "1",
+            "returnedQuantity": 10
+        }
+    }'
+    ```
+
+1. Get snapshot
+
+    ```bash
+    curl --request GET "https://api-funcinv<suffix>.azurewebsites.net/api/GetAsyncSnapshot/1-1000"
     ```
 
 <br/>

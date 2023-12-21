@@ -10,6 +10,7 @@ namespace Inventory.Infrastructure.Domain
         public string pk { get; set; }
         public string eventType { get; set; }
         public EventDetails eventDetails { get; set; }
+        public string docType { get; set; } = "InventoryEvent";
         public DateTime eventTime { get; set; }
         public long _ts { get; set; }
     }
@@ -18,6 +19,7 @@ namespace Inventory.Infrastructure.Domain
     [JsonDerivedType(typeof(ItemReservedEvent))]
     [JsonDerivedType(typeof(OrderCancelledEvent))]
     [JsonDerivedType(typeof(OrderShippedEvent))]
+    [JsonDerivedType(typeof(OrderReturnedEvent))]
     public abstract class EventDetails
     {
         public string productId { get; set; }
@@ -44,43 +46,60 @@ namespace Inventory.Infrastructure.Domain
         public required long shippedQuantity { get; set; }
     }
 
+    public class OrderReturnedEvent : EventDetails
+    {
+        public required long returnedQuantity { get; set; }
+    }
+
     public class InventoryEventConverter : JsonConverter<InventoryEvent>
     {
         public override InventoryEvent? Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
         {
-            var token = JsonDocument.ParseValue(ref reader).RootElement;
-            var eventType = token.GetProperty("eventType").GetString();
+            InventoryEvent inventoryEvent = null;
 
-            EventDetails eventDetails = null;
-            switch (eventType.ToLowerInvariant())
+            try
             {
-                case "inventoryupdated":
-                    eventDetails = JsonSerializer.Deserialize<InventoryUpdatedEvent>(token.GetProperty("eventDetails").GetRawText());
-                    break;
-                case "itemreserved":
-                    eventDetails = JsonSerializer.Deserialize<ItemReservedEvent>(token.GetProperty("eventDetails").GetRawText());
-                    break;
-                case "ordershipped":
-                    eventDetails = JsonSerializer.Deserialize<OrderShippedEvent>(token.GetProperty("eventDetails").GetRawText());
-                    break;
-                case "ordercancelled":
-                    eventDetails = JsonSerializer.Deserialize<OrderCancelledEvent>(token.GetProperty("eventDetails").GetRawText());
-                    break;
-                default:
-                    throw new Exception($"Unknown eventType: {eventType}");
+                var token = JsonDocument.ParseValue(ref reader).RootElement;
+                var eventType = token.GetProperty("eventType").GetString();
+
+                EventDetails eventDetails = null;
+                switch (eventType.ToLowerInvariant())
+                {
+                    case "inventoryupdated":
+                        eventDetails = JsonSerializer.Deserialize<InventoryUpdatedEvent>(token.GetProperty("eventDetails").GetRawText());
+                        break;
+                    case "itemreserved":
+                        eventDetails = JsonSerializer.Deserialize<ItemReservedEvent>(token.GetProperty("eventDetails").GetRawText());
+                        break;
+                    case "ordershipped":
+                        eventDetails = JsonSerializer.Deserialize<OrderShippedEvent>(token.GetProperty("eventDetails").GetRawText());
+                        break;
+                    case "ordercancelled":
+                        eventDetails = JsonSerializer.Deserialize<OrderCancelledEvent>(token.GetProperty("eventDetails").GetRawText());
+                        break;
+                    case "orderreturned":
+                        eventDetails = JsonSerializer.Deserialize<OrderReturnedEvent>(token.GetProperty("eventDetails").GetRawText());
+                        break;
+                    default:
+                        throw new Exception($"Unknown eventType: {eventType}");
+                }
+
+                JsonElement id;
+                JsonElement _ts;
+
+                inventoryEvent = new InventoryEvent
+                {
+                    id = token.TryGetProperty("id", out id) ? id.GetString() : null,
+                    pk = token.GetProperty("pk").GetString(),
+                    eventType = eventType,
+                    eventDetails = eventDetails,
+                    _ts = token.TryGetProperty("_ts", out _ts) ? _ts.GetInt64() : 0,
+                };
             }
-
-            JsonElement id;
-            JsonElement _ts;
-
-            var inventoryEvent = new InventoryEvent 
-            { 
-                id = token.TryGetProperty("id", out id) ? id.GetString() : null,
-                pk = token.GetProperty("pk").GetString(),
-                eventType = eventType,
-                eventDetails = eventDetails,
-                _ts = token.TryGetProperty("_ts", out _ts) ? _ts.GetInt64() : 0,
-            };
+            catch
+            {
+                
+            }
             return inventoryEvent;
         }
 
