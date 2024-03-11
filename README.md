@@ -80,8 +80,8 @@ You can call Function APIs from Azure Portal or your favorite tool.
 > Async and Sync calls are similar. Just change the api path: /CreateAsyncInventoryEvent or /CreateSyncInventoryEvent, /GetAsyncSnapshot or /GetSyncSnapshot.
 
 1. Creates initial inventory of a product
-</br>
-InventoryUpdated event will create or patch InventorySnapshot increasing onHand and availbleToSell quantities.
+
+    InventoryUpdated event will create or patch InventorySnapshot increasing onHand and availbleToSell quantities.
 
     ```bash
     curl --request POST "https://api-funcinv<suffix>.azurewebsites.net/api/CreateAsyncInventoryEvent" \
@@ -98,8 +98,8 @@ InventoryUpdated event will create or patch InventorySnapshot increasing onHand 
     ```
 
 1. Notifies items reserved
-</br>
-ItemReserved event will patch InventorySnapshot increasing activeCustomerReservations and decreasing availbleToSell quantities. Reservations can only occur if reservedQuantity < availableToSell.
+
+    ItemReserved event will patch InventorySnapshot increasing activeCustomerReservations and decreasing availbleToSell quantities. Reservations can only occur if reservedQuantity < availableToSell.
 
     ```bash
     curl --request POST "https://api-funcinv<suffix>.azurewebsites.net/api/CreateAsyncInventoryEvent" \
@@ -116,8 +116,8 @@ ItemReserved event will patch InventorySnapshot increasing activeCustomerReserva
     ```
 
 1. Notifies order shipped
-</br>
-OrderShipped event will patch InventorySnapshot decreasing activeCustomerReservations and onHand quantities. Shippments can only occur if shippedQuantity <= activeCustomerReservations.
+
+    OrderShipped event will patch InventorySnapshot decreasing activeCustomerReservations and onHand quantities. Shippments can only occur if shippedQuantity <= activeCustomerReservations.
 
     ```bash
     curl --request POST "https://api-funcinv<suffix>.azurewebsites.net/api/CreateAsyncInventoryEvent" \
@@ -132,9 +132,10 @@ OrderShipped event will patch InventorySnapshot decreasing activeCustomerReserva
         }
     }'
     ```
+
 1. Notifies order cancelled
-</br>
-OrderCancelled event will patch InventorySnapshot decreasing activeCustomerReservations and increasing availableToSell quantities. Cancellations can only occur if cancelledQuantity <= activeCustomerReservations.
+
+    OrderCancelled event will patch InventorySnapshot decreasing activeCustomerReservations and increasing availableToSell quantities. Cancellations can only occur if cancelledQuantity <= activeCustomerReservations.
 
     ```bash
     curl --request POST "https://api-funcinv<suffix>.azurewebsites.net/api/CreateAsyncInventoryEvent" \
@@ -151,8 +152,8 @@ OrderCancelled event will patch InventorySnapshot decreasing activeCustomerReser
     ```
 
 1. Notifies order returned
-</br>
-OrderReturned event will patch InventorySnapshot increasing returned and onHand quantities.
+
+    OrderReturned event will patch InventorySnapshot increasing returned and onHand quantities.
 
     ```bash
     curl --request POST "https://api-funcinv<suffix>.azurewebsites.net/api/CreateAsyncInventoryEvent" \
@@ -174,13 +175,9 @@ OrderReturned event will patch InventorySnapshot increasing returned and onHand 
     curl --request GET "https://api-funcinv<suffix>.azurewebsites.net/api/GetAsyncSnapshot/1-1000"
     ```
 
-<br/>
-
 # Clean Up
 
 1. Delete the Resource Group to destroy all resources
-
-<br/>
 
 # How to Contribute
 
