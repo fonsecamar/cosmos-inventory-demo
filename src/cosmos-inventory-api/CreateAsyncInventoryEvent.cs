@@ -4,7 +4,6 @@ using Microsoft.Azure.Cosmos;
 using Microsoft.Azure.Functions.Worker;
 using Microsoft.Azure.Functions.Worker.Http;
 using Microsoft.Extensions.Logging;
-using System.Text.Json;
 
 namespace cosmos_inventory_api
 {
@@ -19,6 +18,12 @@ namespace cosmos_inventory_api
 
         private long _lowAvailabilityThreshold = 0;
 
+        /// <summary>
+        /// Async command processor for inventory events
+        /// Validates the incoming event and checks if there is enough inventory to reserve based on inventory snapshot container.
+        /// Validates in-flight reservations based on ledger container if the inventory is below low availability threshold.
+        /// </summary>
+        /// <returns>Returns HTTP response and stores Event in Cosmos DB using Output binding (Ref CreateAsyncInventoryEventResponse class)</returns>
         [Function("CreateAsyncInventoryEvent")]
         public async Task<CreateAsyncInventoryEventResponse> RunAsync(
             [HttpTrigger(AuthorizationLevel.Anonymous, "post", Route = "CreateAsyncInventoryEvent")] HttpRequestData req,
@@ -39,6 +44,7 @@ namespace cosmos_inventory_api
 
             try
             {
+                /// Validate incoming request
                 if (ev == null) 
                 {
                     response.StatusCode = System.Net.HttpStatusCode.BadRequest;
@@ -52,6 +58,7 @@ namespace cosmos_inventory_api
                 ev.id = Guid.NewGuid().ToString();
                 ev.eventTime = DateTime.UtcNow;
 
+                /// Validate if there is enough inventory to reserve
                 if(ev.eventDetails is ItemReservedEvent)
                 {
                     var reservedQuantity = ((ItemReservedEvent)ev.eventDetails).reservedQuantity;
@@ -69,6 +76,7 @@ namespace cosmos_inventory_api
                     }
                     else if ((snapshot.Resource.availableToSell - reservedQuantity) <= _lowAvailabilityThreshold)
                     {
+                        /// Check in-flight reservations
                         var query = new QueryDefinition("SELECT SUM(c.eventDetails.reservedQuantity) AS ReservationsInFlight FROM c WHERE c.pk = @pk AND c.eventType = 'ItemReserved' AND c._ts > @ts")
                             .WithParameter("@pk", ev.pk)
                             .WithParameter("@ts", snapshot.Resource.lastEventTs);
@@ -90,6 +98,7 @@ namespace cosmos_inventory_api
                     }
                 }
 
+                /// Store event in Cosmos DB and return response
                 return new CreateAsyncInventoryEventResponse()
                 {
                     InventoryEvent = ev,

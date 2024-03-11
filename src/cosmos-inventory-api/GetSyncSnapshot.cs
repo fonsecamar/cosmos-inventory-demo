@@ -15,6 +15,9 @@ namespace cosmos_inventory_api
             _logger = loggerFactory.CreateLogger<GetSyncSnapshot>();
         }
 
+        /// <summary>
+        /// Retrieve a snapshot from the Cosmos DB container (point read)
+        /// </summary>
         [Function("GetSyncSnapshot")]
         public HttpResponseData Run(
             [HttpTrigger(AuthorizationLevel.Anonymous, "get", Route = "GetSyncSnapshot/{id}")] HttpRequestData req,

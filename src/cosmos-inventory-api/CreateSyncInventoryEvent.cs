@@ -4,7 +4,6 @@ using Microsoft.Azure.Functions.Worker;
 using Microsoft.Azure.Functions.Worker.Http;
 using Microsoft.Extensions.Logging;
 using System.Net;
-using System.Text.Json;
 
 namespace cosmos_inventory_api
 {
@@ -17,6 +16,11 @@ namespace cosmos_inventory_api
             _logger = loggerFactory.CreateLogger<CreateSyncInventoryEvent>();
         }
 
+        /// <summary>
+        /// Sync command processor for inventory events
+        /// Uses transactional batch to update inventory snapshot and store event in Cosmos DB
+        /// </summary>
+        /// <returns>Returns HTTP response</returns>
         [Function("CreateSyncInventoryEvent")]
         public async Task<HttpResponseData> RunAsync(
             [HttpTrigger(AuthorizationLevel.Anonymous, "post", Route = "CreateSyncInventoryEvent")] HttpRequestData req,
@@ -32,6 +36,7 @@ namespace cosmos_inventory_api
 
             try
             {
+                /// Validate incoming request
                 if (ev == null)
                 {
                     response.StatusCode = System.Net.HttpStatusCode.BadRequest;
@@ -44,6 +49,7 @@ namespace cosmos_inventory_api
 
                 (HttpStatusCode, string) result = (HttpStatusCode.BadRequest, string.Empty);
 
+                /// Process event based on event type
                 switch (ev.eventType.ToLowerInvariant())
                 {
                     case "inventoryupdated":
@@ -86,6 +92,7 @@ namespace cosmos_inventory_api
         {
             long onHandQuantity = ((InventoryUpdatedEvent)inventoryEvent.eventDetails).onHandQuantity;
 
+            /// Uses patch operations to update inventory snapshot
             List<PatchOperation> patchOperations = new List<PatchOperation>();
             patchOperations.Add(PatchOperation.Increment("/onHand", onHandQuantity));
             patchOperations.Add(PatchOperation.Increment("/availableToSell", onHandQuantity));
@@ -95,6 +102,7 @@ namespace cosmos_inventory_api
             {
                 var pk = new PartitionKey(inventoryEvent.pk);
 
+                /// Create transactional batch to patch inventory snapshot and create the event
                 var batch = unifiedContainer.CreateTransactionalBatch(pk);
 
                 batch.PatchItem(inventoryEvent.pk, patchOperations);
@@ -106,6 +114,8 @@ namespace cosmos_inventory_api
                     return new(HttpStatusCode.OK, string.Empty);
                 else if (response.StatusCode == System.Net.HttpStatusCode.NotFound)
                 {
+                    /// If snapshot not found, create a new snapshot
+
                     _logger.LogInformation($"Inventory snapshot not found for item {inventoryEvent.pk}. Creating new snapshot.");
 
                     var snapshot = new InventoryShapshot()
@@ -143,11 +153,13 @@ namespace cosmos_inventory_api
         {
             long cancelledQuantity = ((OrderCancelledEvent)inventoryEvent.eventDetails).cancelledQuantity;
 
+            /// Uses patch operations to update inventory snapshot
             List<PatchOperation> patchOperations = new List<PatchOperation>();
             patchOperations.Add(PatchOperation.Increment("/activeCustomerReservations", -cancelledQuantity));
             patchOperations.Add(PatchOperation.Increment("/availableToSell", cancelledQuantity));
             patchOperations.Add(PatchOperation.Set("/lastUpdated", DateTime.UtcNow));
 
+            /// Uses patch options to filter items based on a predicate. Cancel order only if there are enough active reservations
             var patchOptions = new TransactionalBatchPatchItemRequestOptions()
             {
                 FilterPredicate = $"FROM c WHERE c.activeCustomerReservations >= {cancelledQuantity}"
@@ -157,6 +169,7 @@ namespace cosmos_inventory_api
             {
                 var pk = new PartitionKey(inventoryEvent.pk);
 
+                /// Create transactional batch to patch inventory snapshot and create the event
                 var batch = unifiedContainer.CreateTransactionalBatch(pk);
 
                 batch.PatchItem(inventoryEvent.pk, patchOperations, patchOptions);
@@ -167,6 +180,7 @@ namespace cosmos_inventory_api
                 if (response.IsSuccessStatusCode)
                     return new (HttpStatusCode.OK, string.Empty);
                 else if (response.StatusCode == HttpStatusCode.PreconditionFailed)
+                    /// If there are not enough reservations, return a 412 Precondition Failed status code
                     return new(HttpStatusCode.PreconditionFailed, $"Inventory snapshot not updated for item {inventoryEvent.pk} because of not enough reservations.");
                 else
                     return new(response.StatusCode, response.ErrorMessage);
@@ -182,6 +196,7 @@ namespace cosmos_inventory_api
         {
             long returnedQuantity = ((OrderReturnedEvent)inventoryEvent.eventDetails).returnedQuantity;
 
+            /// Uses patch operations to update inventory snapshot
             List<PatchOperation> patchOperations = new List<PatchOperation>();
             patchOperations.Add(PatchOperation.Increment("/returned", returnedQuantity));
             patchOperations.Add(PatchOperation.Increment("/onHand", returnedQuantity));
@@ -191,6 +206,7 @@ namespace cosmos_inventory_api
             {
                 var pk = new PartitionKey(inventoryEvent.pk);
 
+                /// Create transactional batch to patch inventory snapshot and create the event
                 var batch = unifiedContainer.CreateTransactionalBatch(pk);
 
                 batch.PatchItem(inventoryEvent.pk, patchOperations);
@@ -214,11 +230,13 @@ namespace cosmos_inventory_api
         {
             long shippedQuantity = ((OrderShippedEvent)inventoryEvent.eventDetails).shippedQuantity;
 
+            /// Uses patch operations to update inventory snapshot
             List<PatchOperation> patchOperations = new List<PatchOperation>();
             patchOperations.Add(PatchOperation.Increment("/activeCustomerReservations", -shippedQuantity));
             patchOperations.Add(PatchOperation.Increment("/onHand", -shippedQuantity));
             patchOperations.Add(PatchOperation.Set("/lastUpdated", DateTime.UtcNow));
 
+            /// Uses patch options to filter items based on a predicate. Ship order only if there are enough active reservations
             var patchOptions = new TransactionalBatchPatchItemRequestOptions()
             {
                 FilterPredicate = $"FROM c WHERE c.activeCustomerReservations >= {shippedQuantity}"
@@ -228,6 +246,7 @@ namespace cosmos_inventory_api
             {
                 var pk = new PartitionKey(inventoryEvent.pk);
 
+                /// Create transactional batch to patch inventory snapshot and create the event
                 var batch = unifiedContainer.CreateTransactionalBatch(pk);
 
                 batch.PatchItem(inventoryEvent.pk, patchOperations, patchOptions);
@@ -238,6 +257,7 @@ namespace cosmos_inventory_api
                 if (response.IsSuccessStatusCode)
                     return new(HttpStatusCode.OK, string.Empty);
                 else if (response.StatusCode == HttpStatusCode.PreconditionFailed)
+                    /// If there are not enough reservations, return a 412 Precondition Failed status code
                     return new(HttpStatusCode.PreconditionFailed, $"Inventory snapshot not updated for item {inventoryEvent.pk} because of not enough reservations.");
                 else
                     return new(response.StatusCode, response.ErrorMessage);
@@ -253,11 +273,13 @@ namespace cosmos_inventory_api
         {
             long reservedQuantity = ((ItemReservedEvent)inventoryEvent.eventDetails).reservedQuantity;
 
+            /// Uses patch operations to update inventory snapshot
             List<PatchOperation> patchOperations = new List<PatchOperation>();
             patchOperations.Add(PatchOperation.Increment("/activeCustomerReservations", reservedQuantity));
             patchOperations.Add(PatchOperation.Increment("/availableToSell", -reservedQuantity));
             patchOperations.Add(PatchOperation.Set("/lastUpdated", DateTime.UtcNow));
 
+            /// Uses patch options to filter items based on a predicate. Validate reservation only if there are enough items to reserve.
             var patchOptions = new TransactionalBatchPatchItemRequestOptions()
             {
                 FilterPredicate = $"FROM c WHERE (c.availableToSell - {reservedQuantity}) >= 0"
@@ -267,6 +289,7 @@ namespace cosmos_inventory_api
             {
                 var pk = new PartitionKey(inventoryEvent.pk);
 
+                /// Create transactional batch to patch inventory snapshot and create the event
                 var batch = unifiedContainer.CreateTransactionalBatch(pk);
 
                 batch.PatchItem(inventoryEvent.pk, patchOperations, patchOptions);
@@ -277,6 +300,7 @@ namespace cosmos_inventory_api
                 if (response.IsSuccessStatusCode)
                     return new(HttpStatusCode.OK, string.Empty);
                 else if (response.StatusCode == HttpStatusCode.PreconditionFailed)
+                    /// If there are not enough items to reserve, return a 412 Precondition Failed status code
                     return new(HttpStatusCode.PreconditionFailed, $"Cannot reserve {reservedQuantity} of item {inventoryEvent.pk}!");
                 else
                     return new(response.StatusCode, response.ErrorMessage);

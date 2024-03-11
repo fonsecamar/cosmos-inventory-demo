@@ -13,9 +13,13 @@ This demo contains 2 alternative ways to implement inventory management.
 - inventorySnapshot container holds inventory snapshots (current inventory position)
 - leases container used by CosmosDB Trigger
 
+![Async Architecture](./images/async-architecture.jpg)
+
 ### Sync Pattern:
 - SyncInventory Function (Http Trigger - Rest API)
 - syncInventory container holds inventory events and shapshots as separate documents
+
+![Sync Architecture](./images/sync-architecture.jpg)
 
 ## Requirements to deploy
 > Setup shell was tested on WSL2 (Ubuntu 22.04.2 LTS)
@@ -49,12 +53,13 @@ This demo contains 2 alternative ways to implement inventory management.
 * Run setup.sh with the appropriete parameters. Keep the API's URIs prompted when completed.
 > Provide a non-existent resource group name. Setup will provision.
 
-    ```bash
-    #SAMPLE
-    #./setup.sh 00000000-0000-0000-0000-000000000000 rg-my-demo SouthCentralUS
+```bash
+#SAMPLE
+#./setup.sh 00000000-0000-0000-0000-000000000000 rg-my-demo SouthCentralUS
 
-    ./setup.sh <subscription id> <resource group> <location>
-    ```
+./setup.sh <subscription id> <resource group> <location>
+```
+
 > Setup has some pause stages. Hit enter to continue when prompted. 
 > 
 > It takes around 3min to provision and configure resoures.
@@ -66,6 +71,8 @@ This demo contains 2 alternative ways to implement inventory management.
 > - Azure Functions Basic Plan
 > - Azure Log Analytics Workspace
 > - Azure Application Insights
+>
+> Microsoft Fabric is not created or configured by this automation.
 
 ## Running the sample
 
