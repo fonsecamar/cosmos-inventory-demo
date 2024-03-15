@@ -27,8 +27,7 @@ RGCREATED=$(az group create \
                 --query "properties.provisioningState" \
                 -o tsv)
 
-if [ "$RGCREATED" != "Succeeded" ] 
-then
+if [[ "$RGCREATED" != "Succeeded" ]]; then
     echo 'Resource group creation failed! Exiting...'
     exit
 fi
@@ -41,8 +40,7 @@ INFRADEPLOYED=$(az deployment group create \
                     -o tsv)
 #                    --parameters suffix=$SUFFIX \
 
-if [ "$INFRADEPLOYED" != "Succeeded" ] 
-then
+if [[ "$INFRADEPLOYED" != "Succeeded" ]]; then
     echo 'Infrastructure deployment failed! Exiting...'
     exit
 fi

@@ -12,7 +12,11 @@ var containers = [
     partitionKeys: ['/pk']
     index: {
       enabled: true
-      includePaths: []
+      includePaths: [
+        {
+          path: '/pk/?'
+        }
+      ]
       excludePaths: [
         {
           path: '/*'
@@ -51,7 +55,11 @@ var containers = [
     partitionKeys: ['/pk']
     index: {
       enabled: true
-      includePaths: []
+      includePaths: [
+        {
+          path: '/pk/?'
+        }
+      ]
       excludePaths: [
         {
           path: '/*'
@@ -89,17 +97,20 @@ var locations = [
 @maxValue(1000000)
 param autoscaleMaxThroughput int = 1000
 
-resource account 'Microsoft.DocumentDB/databaseAccounts@2022-05-15' = {
+resource account 'Microsoft.DocumentDB/databaseAccounts@2023-11-15' = {
   name: toLower(accountName)
   kind: 'GlobalDocumentDB'
   location: location
   properties: {
     locations: locations
     databaseAccountOfferType: 'Standard'
+    backupPolicy: {
+      type: 'Continuous'
+    }
   }
 }
 
-resource database 'Microsoft.DocumentDB/databaseAccounts/sqlDatabases@2022-05-15' = {
+resource database 'Microsoft.DocumentDB/databaseAccounts/sqlDatabases@2023-11-15' = {
   parent: account
   name: databaseName
   properties: {
@@ -114,7 +125,7 @@ resource database 'Microsoft.DocumentDB/databaseAccounts/sqlDatabases@2022-05-15
   }
 }
 
-resource container 'Microsoft.DocumentDB/databaseAccounts/sqlDatabases/containers@2022-05-15' = [for (config, i) in containers: {
+resource container 'Microsoft.DocumentDB/databaseAccounts/sqlDatabases/containers@2023-11-15' = [for (config, i) in containers: {
   parent: database
   name: config.name
   properties: {

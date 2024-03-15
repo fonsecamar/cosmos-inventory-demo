@@ -24,7 +24,7 @@ param syncInventoryContainer string
 
 
 
-resource logAnalytics 'Microsoft.OperationalInsights/workspaces@2022-10-01' = {
+resource logAnalytics 'Microsoft.OperationalInsights/workspaces@2023-09-01' = {
   name: functionAppName
   location: location
   properties: {
@@ -55,7 +55,7 @@ resource appInsightsWorker 'Microsoft.Insights/components@2020-02-02' = {
   }
 }
 
-resource plan 'Microsoft.Web/serverfarms@2020-12-01' = {
+resource plan 'Microsoft.Web/serverfarms@2023-01-01' = {
   name: '${functionAppName}Plan'
   location: location
   kind: 'functionapp'
@@ -64,11 +64,11 @@ resource plan 'Microsoft.Web/serverfarms@2020-12-01' = {
   }
 }
 
-resource blob 'Microsoft.Storage/storageAccounts@2022-09-01' existing = {
+resource blob 'Microsoft.Storage/storageAccounts@2023-01-01' existing = {
   name: storageAccountName
 }
 
-resource functionAppApi 'Microsoft.Web/sites@2022-03-01' = {
+resource functionAppApi 'Microsoft.Web/sites@2023-01-01' = {
   name: 'api-${functionAppName}'
   location: location
   kind: 'functionapp'
@@ -144,7 +144,7 @@ resource functionAppApi 'Microsoft.Web/sites@2022-03-01' = {
   }
 }
 
-resource functionAppWorker 'Microsoft.Web/sites@2022-03-01' = {
+resource functionAppWorker 'Microsoft.Web/sites@2023-01-01' = {
   name: 'worker-${functionAppName}'
   location: location
   kind: 'functionapp'
@@ -212,11 +212,11 @@ resource functionAppWorker 'Microsoft.Web/sites@2022-03-01' = {
   }
 }
 
-resource cosmos 'Microsoft.DocumentDB/databaseAccounts@2022-08-15' existing = {
+resource cosmos 'Microsoft.DocumentDB/databaseAccounts@2023-11-15' existing = {
   name: cosmosAccountName
 }
 
-resource roleAssignmentCosmosApi 'Microsoft.DocumentDB/databaseAccounts/sqlRoleAssignments@2022-08-15' = {
+resource roleAssignmentCosmosApi 'Microsoft.DocumentDB/databaseAccounts/sqlRoleAssignments@2023-11-15' = {
   name: guid(cosmos.id, functionAppApi.id, 'CosmosContributor')
   parent: cosmos
   properties: {
@@ -226,7 +226,7 @@ resource roleAssignmentCosmosApi 'Microsoft.DocumentDB/databaseAccounts/sqlRoleA
   }
 }
 
-resource roleAssignmentCosmosWorker 'Microsoft.DocumentDB/databaseAccounts/sqlRoleAssignments@2022-08-15' = {
+resource roleAssignmentCosmosWorker 'Microsoft.DocumentDB/databaseAccounts/sqlRoleAssignments@2023-11-15' = {
   name: guid(cosmos.id, functionAppWorker.id, 'CosmosContributor')
   parent: cosmos
   properties: {
