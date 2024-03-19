@@ -4,11 +4,18 @@ param accountName string
 @description('Location for the Cosmos DB account.')
 param location string = resourceGroup().location
 
+@description('Maximum autoscale throughput for the container')
+@minValue(1000)
+@maxValue(1000000)
+param autoscaleMaxThroughput int = 1000
+
 var databaseName = 'Inventory'
+var useDatabaseSharedThroughput = true
 
 var containers = [
   {
     name: 'inventoryLedger'
+    maxThroughput: 100000
     partitionKeys: ['/pk']
     index: {
       enabled: true
@@ -42,6 +49,7 @@ var containers = [
   }
   {
     name: 'inventorySnapshot'
+    maxThroughput: 50000
     partitionKeys: ['/id']
     index: {
       enabled: false
@@ -52,6 +60,7 @@ var containers = [
   }
   {
     name: 'syncInventory'
+    maxThroughput: 50000
     partitionKeys: ['/pk']
     index: {
       enabled: true
@@ -70,6 +79,7 @@ var containers = [
   }
   {
     name: 'leases'
+    maxThroughput: 10000
     partitionKeys: ['/id' ]
     index: {
       enabled: true
@@ -92,10 +102,6 @@ var locations = [
   }
 ]
 
-@description('Maximum autoscale throughput for the container')
-@minValue(1000)
-@maxValue(1000000)
-param autoscaleMaxThroughput int = 1000
 
 resource account 'Microsoft.DocumentDB/databaseAccounts@2023-11-15' = {
   name: toLower(accountName)
@@ -115,9 +121,9 @@ resource database 'Microsoft.DocumentDB/databaseAccounts/sqlDatabases@2023-11-15
   name: databaseName
   properties: {
     options: {
-      autoscaleSettings: {
+      autoscaleSettings: useDatabaseSharedThroughput ? {
         maxThroughput: autoscaleMaxThroughput
-      }
+      } : {}
     }
     resource: {
       id: databaseName
@@ -129,6 +135,11 @@ resource container 'Microsoft.DocumentDB/databaseAccounts/sqlDatabases/container
   parent: database
   name: config.name
   properties: {
+    options: {
+      autoscaleSettings: useDatabaseSharedThroughput ? {} : {
+        maxThroughput: config.maxThroughput
+      }
+    }
     resource: {
       id: config.name
       partitionKey: {

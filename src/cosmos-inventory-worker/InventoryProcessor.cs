@@ -23,7 +23,7 @@ namespace cosmos_inventory_worker
                 containerName: "%ledgerContainer%",
                 Connection = "CosmosInventoryConnection",
                 LeaseContainerName = "leases",
-                MaxItemsPerInvocation = 20,
+                MaxItemsPerInvocation = 100,
                 FeedPollDelay = 1000,
                 StartFromBeginning = false,
                 CreateLeaseContainerIfNotExists = true)]IReadOnlyList<InventoryEvent> input,
@@ -33,7 +33,7 @@ namespace cosmos_inventory_worker
                 Connection = "CosmosInventoryConnection")] Container snapshotContainer,
              FunctionContext executionContext)
         {
-            foreach (var ev in input)
+            await Parallel.ForEachAsync(input, async (ev, token) =>
             {
                 /// Process event based on event type
                 switch (ev.eventType.ToLowerInvariant())
@@ -61,7 +61,7 @@ namespace cosmos_inventory_worker
                     default:
                         break;
                 }
-            }            
+            });
         }
 
         public async Task ProcessInventoryUpdatedEventAsync(InventoryEvent inventoryEvent, Container snapshotContainer)

@@ -72,7 +72,9 @@ This demo contains 2 alternative ways to implement inventory management.
 > - Azure Log Analytics Workspace
 > - Azure Application Insights
 >
-> Microsoft Fabric is not created or configured by this automation.
+>> Microsoft Fabric is not created or configured by this automation.
+>
+>> For performance/load testing, use containers with dedicated throughput and Elastic Premium Functions.
 
 ## Running the sample
 
