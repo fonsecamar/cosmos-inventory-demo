@@ -103,7 +103,7 @@ var locations = [
 ]
 
 
-resource account 'Microsoft.DocumentDB/databaseAccounts@2023-11-15' = {
+resource account 'Microsoft.DocumentDB/databaseAccounts@2025-10-15' = {
   name: toLower(accountName)
   kind: 'GlobalDocumentDB'
   location: location
@@ -116,7 +116,7 @@ resource account 'Microsoft.DocumentDB/databaseAccounts@2023-11-15' = {
   }
 }
 
-resource database 'Microsoft.DocumentDB/databaseAccounts/sqlDatabases@2023-11-15' = {
+resource database 'Microsoft.DocumentDB/databaseAccounts/sqlDatabases@2025-10-15' = {
   parent: account
   name: databaseName
   properties: {
@@ -131,7 +131,7 @@ resource database 'Microsoft.DocumentDB/databaseAccounts/sqlDatabases@2023-11-15
   }
 }
 
-resource container 'Microsoft.DocumentDB/databaseAccounts/sqlDatabases/containers@2023-11-15' = [for (config, i) in containers: {
+resource container 'Microsoft.DocumentDB/databaseAccounts/sqlDatabases/containers@2025-10-15' = [for (config, i) in containers: {
   parent: database
   name: config.name
   properties: {

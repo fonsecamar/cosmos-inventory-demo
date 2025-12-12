@@ -24,7 +24,7 @@ param syncInventoryContainer string
 
 
 
-resource logAnalytics 'Microsoft.OperationalInsights/workspaces@2023-09-01' = {
+resource logAnalytics 'Microsoft.OperationalInsights/workspaces@2025-07-01' = {
   name: functionAppName
   location: location
   properties: {
@@ -55,7 +55,7 @@ resource appInsightsWorker 'Microsoft.Insights/components@2020-02-02' = {
   }
 }
 
-resource plan 'Microsoft.Web/serverfarms@2023-01-01' = {
+resource plan 'Microsoft.Web/serverfarms@2025-03-01' = {
   name: '${functionAppName}Plan'
   location: location
   kind: 'functionapp'
@@ -64,11 +64,11 @@ resource plan 'Microsoft.Web/serverfarms@2023-01-01' = {
   }
 }
 
-resource blob 'Microsoft.Storage/storageAccounts@2023-01-01' existing = {
+resource blob 'Microsoft.Storage/storageAccounts@2025-06-01' existing = {
   name: storageAccountName
 }
 
-resource functionAppApi 'Microsoft.Web/sites@2023-01-01' = {
+resource functionAppApi 'Microsoft.Web/sites@2025-03-01' = {
   name: 'api-${functionAppName}'
   location: location
   kind: 'functionapp'
@@ -83,8 +83,16 @@ resource functionAppApi 'Microsoft.Web/sites@2023-01-01' = {
       
       appSettings: [
         {
-          name: 'AzureWebJobsStorage'
-          value: 'DefaultEndpointsProtocol=https;AccountName=${blob.name};EndpointSuffix=${environment().suffixes.storage};AccountKey=${blob.listKeys().keys[0].value}'
+          name: 'AzureWebJobsStorage__accountName'
+          value: blob.name
+        }
+        {
+          name: 'AzureWebJobsStorage__credential'
+          value: 'managedidentity'
+        }
+        {
+          name: 'AzureWebJobsStorage__blobServiceUri'
+          value: 'https://${blob.name}.blob.${environment().suffixes.storage}'
         }
         {
           name: 'WEBSITE_CONTENTAZUREFILECONNECTIONSTRING'
@@ -144,7 +152,7 @@ resource functionAppApi 'Microsoft.Web/sites@2023-01-01' = {
   }
 }
 
-resource functionAppWorker 'Microsoft.Web/sites@2023-01-01' = {
+resource functionAppWorker 'Microsoft.Web/sites@2025-03-01' = {
   name: 'worker-${functionAppName}'
   location: location
   kind: 'functionapp'
@@ -159,8 +167,16 @@ resource functionAppWorker 'Microsoft.Web/sites@2023-01-01' = {
       
       appSettings: [
         {
-          name: 'AzureWebJobsStorage'
-          value: 'DefaultEndpointsProtocol=https;AccountName=${blob.name};EndpointSuffix=${environment().suffixes.storage};AccountKey=${blob.listKeys().keys[0].value}'
+          name: 'AzureWebJobsStorage__accountName'
+          value: blob.name
+        }
+        {
+          name: 'AzureWebJobsStorage__credential'
+          value: 'managedidentity'
+        }
+        {
+          name: 'AzureWebJobsStorage__blobServiceUri'
+          value: 'https://${blob.name}.blob.${environment().suffixes.storage}'
         }
         {
           name: 'WEBSITE_CONTENTAZUREFILECONNECTIONSTRING'
@@ -212,11 +228,22 @@ resource functionAppWorker 'Microsoft.Web/sites@2023-01-01' = {
   }
 }
 
-resource cosmos 'Microsoft.DocumentDB/databaseAccounts@2023-11-15' existing = {
+resource cosmos 'Microsoft.DocumentDB/databaseAccounts@2025-10-15' existing = {
   name: cosmosAccountName
 }
 
-resource roleAssignmentCosmosApi 'Microsoft.DocumentDB/databaseAccounts/sqlRoleAssignments@2023-11-15' = {
+// Storage RBAC roles for API Function
+resource roleAssignmentStorageBlobApi 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
+  scope: blob
+  name: guid(blob.id, functionAppApi.id, 'StorageBlobDataOwner')
+  properties: {
+    roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', 'b7e6dc6d-f1e8-4753-8033-0f276bb0955b') // Storage Blob Data Owner
+    principalId: functionAppApi.identity.principalId
+    principalType: 'ServicePrincipal'
+  }
+}
+
+resource roleAssignmentCosmosApi 'Microsoft.DocumentDB/databaseAccounts/sqlRoleAssignments@2025-10-15' = {
   name: guid(cosmos.id, functionAppApi.id, 'CosmosContributor')
   parent: cosmos
   properties: {
@@ -226,7 +253,18 @@ resource roleAssignmentCosmosApi 'Microsoft.DocumentDB/databaseAccounts/sqlRoleA
   }
 }
 
-resource roleAssignmentCosmosWorker 'Microsoft.DocumentDB/databaseAccounts/sqlRoleAssignments@2023-11-15' = {
+// Storage RBAC roles for Worker Function
+resource roleAssignmentStorageBlobWorker 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
+  scope: blob
+  name: guid(blob.id, functionAppWorker.id, 'StorageBlobDataOwner')
+  properties: {
+    roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', 'b7e6dc6d-f1e8-4753-8033-0f276bb0955b') // Storage Blob Data Owner
+    principalId: functionAppWorker.identity.principalId
+    principalType: 'ServicePrincipal'
+  }
+}
+
+resource roleAssignmentCosmosWorker 'Microsoft.DocumentDB/databaseAccounts/sqlRoleAssignments@2025-10-15' = {
   name: guid(cosmos.id, functionAppWorker.id, 'CosmosContributor')
   parent: cosmos
   properties: {

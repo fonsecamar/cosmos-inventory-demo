@@ -35,15 +35,11 @@ module function 'functions.bicep' = {
   params: {
     location: location
     functionAppName: functionAppName
-    storageAccountName: storageAccountName
-    cosmosAccountName: cosmosAccountName
+    storageAccountName: blob.outputs.storageAccountName
+    cosmosAccountName: cosmosdb.outputs.cosmosAccountName
     inventoryDatabase: cosmosdb.outputs.cosmosDatabaseName
     ledgerContainer: 'inventoryLedger'
     snapshotContainer: 'inventorySnapshot'
     syncInventoryContainer: 'syncInventory'
   }
-  dependsOn: [
-    cosmosdb
-    blob
-  ]
 }

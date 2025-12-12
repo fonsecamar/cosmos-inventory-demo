@@ -4,7 +4,7 @@ param storageAccountName string
 @description('Resource cocation')
 param location string = resourceGroup().location
 
-resource blob 'Microsoft.Storage/storageAccounts@2023-01-01' = {
+resource blob 'Microsoft.Storage/storageAccounts@2025-06-01' = {
   name: storageAccountName
   location: location
   sku: {
@@ -13,5 +13,9 @@ resource blob 'Microsoft.Storage/storageAccounts@2023-01-01' = {
   kind: 'StorageV2'
   properties: {
     isHnsEnabled: true
+    minimumTlsVersion: 'TLS1_2'
+    allowSharedKeyAccess: true
   }
 }
+
+output storageAccountName string = blob.name
